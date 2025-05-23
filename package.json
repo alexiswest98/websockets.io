@@ -1,0 +1,19 @@
+{
+  "name": "node-multiuser-hostview",
+  "version": "0.0.1",
+  "description": "Example using express to serve files through node.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "express",
+    "beginner-friendly"
+  ],
+  "author": "kate hollenbach",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.0.0",
+    "socket.io": "^4.8.1"
+  }
+}
