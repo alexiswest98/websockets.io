@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Client Demo</title>
+    <title>Drawing Chat</title>
 
     <!-- import the webpage's stylesheet -->
     <link rel="stylesheet" href="/style.css" />
@@ -21,11 +21,63 @@
     <script src="client.js" defer></script>
   </head>
   <body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-page">
+      <div class="login-form">
+        <h2>Join Drawing Chat</h2>
+        <input type="text" id="usernameInput" class="username-input" placeholder="Enter nickname" maxlength="25">
+        <br>
+        <button id="joinBtn" class="join-btn">Start Drawing!</button>
+      </div>
+    </div>
 
-    <!-- TODO: ADD HTML ELEMENTS AS YOU SEE FIT HERE -->
-    <main>
+    <!-- Main Chat Interface -->
+    <div id="mainInterface" class="container hidden">
+      <!-- Drawing Panel -->
+      <div class="drawing-panel">
+        <div class="drawing-header">
+          <h3>Your Canvas</h3>
+        </div>
+        
+        <div class="controls">
+          <div class="control-group">
+            <label for="colorPicker">Brush Color</label>
+            <input type="color" id="colorPicker" class="color-picker" value="#000000">
+          </div>
+          
+          <div class="control-group">
+            <label for="brushSize">Brush Size</label>
+            <input type="range" id="brushSize" class="brush-size" min="1" max="20" value="3">
+            <div class="size-display">Size: <span id="sizeValue">3</span>px</div>
+          </div>
+        </div>
+        
+        <div class="canvas-container">
+          <div id="canvasContainer" class="p5-canvas-container">
+            <!-- p5.js canvas will be inserted here -->
+          </div>
+          <div class="canvas-controls">
+            <button id="clearBtn" class="btn clear-btn">Clear</button>
+            <button id="sendBtn" class="btn send-btn">Send Drawing</button>
+          </div>
+        </div>
+      </div>
 
-    </main>
+      <!-- Chat Panel -->
+      <div class="chat-panel">
+        <div class="chat-header">
+          <h3>Drawing Gallery</h3>
+        </div>
+        
+        <div id="participants" class="participants">
+          Connecting...
+        </div>
+        
+        <div id="drawingsFeed" class="drawings-feed">
+          <!-- Drawings will appear here -->
+        </div>
+      </div>
+    </div>
 
   </body>
 </html>

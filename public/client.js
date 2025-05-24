@@ -1,85 +1,250 @@
-/* Draw remotely with other people!
- *
- * JavaScript code for a website that sets up p5.js and talks
- * to another client using socket.io.
- *
- * update the setup, draw, and p5.js event functions as you need to
- * for your interactions. you can also mix this with the other JavaScript
- * methods we've been using for event handling, styling, etc.
- */
+const socket = io();
 
-const SOCKET_URL = window.location.host + "/client";
-const socket = io.connect(SOCKET_URL);
+// UI Elements
+const loginPage = document.getElementById('loginPage');
+const mainInterface = document.getElementById('mainInterface');
+const usernameInput = document.getElementById('usernameInput');
+const joinBtn = document.getElementById('joinBtn');
+const colorPicker = document.getElementById('colorPicker');
+const brushSize = document.getElementById('brushSize');
+const sizeValue = document.getElementById('sizeValue');
+const clearBtn = document.getElementById('clearBtn');
+const sendBtn = document.getElementById('sendBtn');
+const drawingsFeed = document.getElementById('drawingsFeed');
+const participants = document.getElementById('participants');
 
-const updateRate = 30; // frames
+// Drawing state
+let currentUser = '';
+let connected = false;
+let p5Canvas;
 
-// nickname to make you easier to identify on screen
-const handles = [
-  "silver",
-  "maroon",
-  "purple",
-  "fuschia",
-  "green",
-  "lime",
-  "olive",
-  "blue",
-  "teal",
-  "aqua",
-  "darkorchid",
-  "darkolivegreen",
-  "salmon",
-  "goldenrod",
-  "greenyellow",
-  "hotpink",
-  "indigo",
-  "lightblue",
-  "mediumslateblue",
-  "orange",
-  "orangered",
-  "palevioletred"
-];
-let nickname;
+// p5.js sketch
+let sketch = function(p) {
+  let isDrawing = false;
+  
+  p.setup = function() {
+    p5Canvas = p.createCanvas(360, 300);
+    p5Canvas.parent('canvasContainer');
+    p.background(255);
+    p.strokeCap(p.ROUND);
+    p.strokeJoin(p.ROUND);
+  };
+  
+  p.draw = function() {
+    // Drawing happens in mouse events, not in draw loop
+  };
+  
+  p.mousePressed = function() {
+    // Only draw if mouse is within canvas bounds
+    if (p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height) {
+      isDrawing = true;
+      p.stroke(colorPicker.value);
+      p.strokeWeight(brushSize.value);
+      // Start the drawing path
+      p.beginShape();
+      p.vertex(p.mouseX, p.mouseY);
+    }
+  };
+  
+  p.mouseDragged = function() {
+    if (isDrawing && p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height) {
+      p.stroke(colorPicker.value);
+      p.strokeWeight(brushSize.value);
+      p.line(p.pmouseX, p.pmouseY, p.mouseX, p.mouseY);
+      
+      // Emit real-time drawing data to other users
+      if (connected) {
+        socket.emit('drawing_stroke', {
+          x1: p.pmouseX,
+          y1: p.pmouseY,
+          x2: p.mouseX,
+          y2: p.mouseY,
+          color: colorPicker.value,
+          size: brushSize.value
+        });
+      }
+    }
+  };
+  
+  p.mouseReleased = function() {
+    isDrawing = false;
+  };
+  
+  // Function to clear canvas
+  p.clearCanvas = function() {
+    p.background(255);
+  };
+  
+  // Function to get canvas as image data
+  p.getCanvasData = function() {
+    return p5Canvas.canvas.toDataURL();
+  };
+};
 
-// set up the sketch canvas and socket connection,
-// including callback function for when the socket receives data.
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  angleMode(DEGREES);
-  textAlign(CENTER, CENTER);
-  fill(255);
-  nickname = random(handles);
-}
+// Initialize p5 sketch
+let myp5 = new p5(sketch);
 
-function draw() {
-  background(51);
-  noStroke();
+// Event Listeners
+brushSize.addEventListener('input', () => {
+  sizeValue.textContent = brushSize.value;
+});
 
-  textSize(24);
-  text(`Your code name is: ${nickname}.`, width / 2, height / 2);
-  textSize(16);
-  text('Move your phone around.', width / 2, height / 2 + 40);
+joinBtn.addEventListener('click', joinChat);
+usernameInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') joinChat();
+});
 
-  if (frameCount % updateRate === 0) {
-    const data = {
-      accelerationX: accelerationX,
-      accelerationY: accelerationY,
-      accelerationZ: accelerationZ,
-      rotationX: rotationX,
-      rotationY: rotationY,
-      rotationZ: rotationZ,
-      mouseX: mouseX,
-      mouseY: mouseY,
-      touches: touches,
-      windowWidth: windowWidth,
-      windowHeight: windowHeight,
-      id: socket.id,
-      name: nickname
-    };
-    // the touches array is pretty complex, so we need to turn it into
-    // a string before we send it over the socket.
-    socket.emit("update", JSON.stringify(data));
+clearBtn.addEventListener('click', clearCanvas);
+sendBtn.addEventListener('click', sendDrawing);
+
+// Functions
+function joinChat() {
+  //.trim() removes white space from name
+  const username = usernameInput.value.trim();
+  if (username) {
+    currentUser = username;
+    socket.emit('add_user', username);
+    loginPage.classList.add('hidden');
+    mainInterface.classList.remove('hidden');
+    connected = true;
   }
 }
 
-/* leave this here so that Glitch will not mark global p5.js and socket.io functions as errors */
-/* globals io, ADD, ALT, ARROW, AUDIO, AUTO, AXES, BACKSPACE, BASELINE, BEVEL, BEZIER, BLEND, BLUR, BOLD, BOLDITALIC, BOTTOM, BURN, CENTER, CHORD, CLAMP, CLOSE, CONTROL, CORNER, CORNERS, CROSS, CURVE, DARKEST, DEGREES, DEG_TO_RAD, DELETE, DIFFERENCE, DILATE, DODGE, DOWN_ARROW, ENTER, ERODE, ESCAPE, EXCLUSION, FALLBACK, FILL, GRAY, GRID, HALF_PI, HAND, HARD_LIGHT, HSB, HSL, IMAGE, IMMEDIATE, INVERT, ITALIC, LABEL, LANDSCAPE, LEFT, LEFT_ARROW, LIGHTEST, LINEAR, LINES, LINE_LOOP, LINE_STRIP, MIRROR, MITER, MOVE, MULTIPLY, NEAREST, NORMAL, OPAQUE, OPEN, OPTION, OVERLAY, P2D, PI, PIE, POINTS, PORTRAIT, POSTERIZE, PROJECT, QUADRATIC, QUADS, QUAD_STRIP, QUARTER_PI, RADIANS, RADIUS, RAD_TO_DEG, REMOVE, REPEAT, REPLACE, RETURN, RGB, RIGHT, RIGHT_ARROW, ROUND, SCREEN, SHIFT, SOFT_LIGHT, SQUARE, STROKE, SUBTRACT, TAB, TAU, TESS, TEXT, TEXTURE, THRESHOLD, TOP, TRIANGLES, TRIANGLE_FAN, TRIANGLE_STRIP, TWO_PI, UP_ARROW, VIDEO, WAIT, WEBGL, accelerationX, accelerationY, accelerationZ, deltaTime, deviceOrientation, displayHeight, displayWidth, focused, frameCount, height, isKeyPressed, key, keyCode, keyIsPressed, mouseButton, mouseIsPressed, mouseX, mouseY, movedX, movedY, pAccelerationX, pAccelerationY, pAccelerationZ, pRotateDirectionX, pRotateDirectionY, pRotateDirectionZ, pRotationX, pRotationY, pRotationZ, pixels, pmouseX, pmouseY, pwinMouseX, pwinMouseY, rotationX, rotationY, rotationZ, touches, turnAxis, width, winMouseX, winMouseY, windowHeight, windowWidth, abs, acos, alpha, ambientLight, ambientMaterial, angleMode, append, applyMatrix, arc, arrayCopy, asin, atan, atan2, background, beginContour, beginShape, bezier, bezierDetail, bezierPoint, bezierTangent, bezierVertex, blend, blendMode, blue, boolean, box, brightness, byte, camera, ceil, char, circle, clear, clearStorage, color, colorMode, concat, cone, constrain, copy, cos, createA, createAudio, createButton, createCamera, createCanvas, createCapture, createCheckbox, createColorPicker, createDiv, createElement, createFileInput, createGraphics, createImage, createImg, createInput, createNumberDict, createP, createRadio, createSelect, createShader, createSlider, createSpan, createStringDict, createVector, createVideo, createWriter, cursor, curve, curveDetail, curvePoint, curveTangent, curveTightness, curveVertex, cylinder, day, debugMode, degrees, describe, describeElement, directionalLight, displayDensity, dist, downloadFile, ellipse, ellipseMode, ellipsoid, emissiveMaterial, endContour, endShape, erase, exitPointerLock, exp, fill, filter, float, floor, fract, frameRate, frustum, fullscreen, get, getFrameRate, getItem, getURL, getURLParams, getURLPath, green, gridOutput, hex, hour, httpDo, httpGet, httpPost, hue, image, imageMode, int, isLooping, join, keyIsDown, lerp, lerpColor, lightFalloff, lightness, lights, line, loadBytes, loadFont, loadImage, loadJSON, loadModel, loadPixels, loadShader, loadStrings, loadTable, loadXML, log, loop, mag, map, match, matchAll, max, millis, min, minute, model, month, nf, nfc, nfp, nfs, noCanvas, noCursor, noDebugMode, noErase, noFill, noLights, noLoop, noSmooth, noStroke, noTint, noise, noiseDetail, noiseSeed, norm, normalMaterial, orbitControl, ortho, perspective, pixelDensity, plane, point, pointLight, pop, popMatrix, popStyle, pow, print, push, pushMatrix, pushStyle, quad, quadraticVertex, radians, random, randomGaussian, randomSeed, rect, rectMode, red, redraw, registerPromisePreload, removeElements, removeItem, requestPointerLock, resetMatrix, resetShader, resizeCanvas, reverse, rotate, rotateX, rotateY, rotateZ, round, saturation, save, saveCanvas, saveFrames, saveGif, saveJSON, saveJSONArray, saveJSONObject, saveStrings, saveTable, scale, second, select, selectAll, set, setAttributes, setCamera, setFrameRate, setMoveThreshold, setShakeThreshold, shader, shearX, shearY, shininess, shorten, shuffle, sin, smooth, sort, specularColor, specularMaterial, sphere, splice, split, splitTokens, spotLight, sq, sqrt, square, storeItem, str, stroke, strokeCap, strokeJoin, strokeWeight, subset, tan, text, textAlign, textAscent, textDescent, textFont, textLeading, textOutput, textSize, textStyle, textWidth, texture, textureMode, textureWrap, tint, torus, translate, triangle, trim, unchar, unhex, updatePixels, vertex, writeFile, year */
+function clearCanvas() {
+  myp5.clearCanvas();
+  // Emit clear event to other users
+  if (connected) {
+    socket.emit('clear_canvas');
+  }
+}
+
+function sendDrawing() {
+  if (!connected) {
+    addSystemMessage('Not connected to server');
+    return;
+  }
+  
+  const drawingData = myp5.getCanvasData();
+  
+  // Check if canvas is not empty (not just white background)
+  const canvas = p5Canvas.canvas;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  
+  let hasDrawing = false;
+  for (let i = 0; i < pixels.length; i += 4) {
+    // Check if any pixel is not white (255, 255, 255)
+    if (pixels[i] !== 255 || pixels[i + 1] !== 255 || pixels[i + 2] !== 255) {
+      hasDrawing = true;
+      break;
+    }
+  }
+  
+  if (!hasDrawing) {
+    addSystemMessage('Canvas is empty! Draw something first.');
+    return;
+  }
+  
+  socket.emit('new_drawing', {
+    drawing: drawingData,
+    color: colorPicker.value,
+    brushSize: brushSize.value
+  });
+  
+  // Add to local feed
+  addDrawingToFeed({
+    username: currentUser,
+    drawing: drawingData,
+    timestamp: new Date().toISOString()
+  }, true);
+  
+  // Clear canvas after sending
+  clearCanvas();
+  addSystemMessage('Drawing sent!');
+}
+
+function addDrawingToFeed(data) {
+  const messageDiv = document.createElement('div');
+  
+  const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+  
+  messageDiv.innerHTML = `
+    <div class="message-header">
+      <span class="username">${data.username}</span>
+      <span class="timestamp">${timestamp}</span>
+    </div>
+    <img src="${data.drawing}" alt="Drawing by ${data.username}" class="drawing-preview">
+  `;
+  
+  drawingsFeed.appendChild(messageDiv);
+  drawingsFeed.scrollTop = drawingsFeed.scrollHeight;
+}
+
+function addSystemMessage(message) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'system-message';
+  messageDiv.textContent = message;
+  drawingsFeed.appendChild(messageDiv);
+  drawingsFeed.scrollTop = drawingsFeed.scrollHeight;
+}
+
+function updateParticipants(numUsers) {
+  const text = numUsers === 1 ? '1 artist online' : `${numUsers} artists online`;
+  participants.textContent = text;
+}
+
+// Socket Events
+socket.on('connect', () => {
+  connected = true;
+  addSystemMessage('Connected to Drawing Chat!');
+});
+
+socket.on('new_drawing', (data) => {
+  addDrawingToFeed(data);
+  addSystemMessage(`${data.username} shared a new drawing!`);
+});
+
+socket.on('drawing_history', (drawings) => {
+  drawings.forEach(drawing => {
+    addDrawingToFeed(drawing);
+  });
+});
+
+socket.on('user_joined', (data) => {
+  addSystemMessage(`${data.username} joined the drawing session`);
+  updateParticipants(data.numUsers);
+});
+
+socket.on('user_left', (data) => {
+  addSystemMessage(`${data.username} left the drawing session`);
+  updateParticipants(data.numUsers);
+});
+
+socket.on('drawing_stroke', (data) => {
+  // Draw other users' strokes in real-time
+  myp5.stroke(data.color);
+  myp5.strokeWeight(data.size);
+  myp5.line(data.x1, data.y1, data.x2, data.y2);
+});
+
+socket.on('clear_canvas', (data) => {
+  myp5.clearCanvas();
+  addSystemMessage(`${data.username} cleared the canvas`);
+});
+
+socket.on('disconnect', () => {
+  connected = false;
+  addSystemMessage('Connection lost. Trying to reconnect...');
+});
+
+socket.on('reconnect', () => {
+  connected = true;
+  addSystemMessage('Reconnected!');
+  if (currentUser) {
+    socket.emit('add_user', currentUser);
+  }
+});
+
+// Focus on username input when page loads
+usernameInput.focus();
